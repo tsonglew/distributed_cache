@@ -6,7 +6,7 @@ import (
 
 type Cache interface {
 	Set(string, []byte) error
-	Get(string, []byte) error
+	Get(string) ([]byte, error)
 	Del(string) error
 	GetStat() Stat
 }
@@ -15,7 +15,7 @@ func New(typ string) Cache {
 	var c Cache
 	switch typ {
 	case "inmemory":
-		c = newInMemory()
+		c = newInMemoryCache()
 	default:
 		panic("unkown cache type: " + typ)
 	}

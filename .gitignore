@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+distribute_cache
 
 # Test binary, build with `go test -c`
 *.test
