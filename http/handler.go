@@ -1,4 +1,4 @@
-package server
+package http
 
 import (
 	"encoding/json"
@@ -34,6 +34,7 @@ func (c *cacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	case http.MethodPut:
 		b, err := ioutil.ReadAll(r.Body)
+		log.Println("read from body: ", string(b))
 		if err != nil {
 			log.Fatal(err)
 			w.WriteHeader(http.StatusInternalServerError)

@@ -17,7 +17,7 @@ func (c *InMemoryCache) Set(k string, v []byte) error {
 	if exist {
 		c.del(k, tmp)
 	}
-	c.c[k] = tmp
+	c.c[k] = v
 	c.add(k, v)
 	return nil
 }
