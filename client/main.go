@@ -13,7 +13,7 @@ import (
 
 func main() {
 	reader := bufio.NewReader(os.Stdin)
-	conn, err := net.Dial("tcp", "localhost:1236")
+	conn, err := net.Dial("tcp", "localhost:1235")
 	if err != nil {
 		log.Fatal(err)
 	}

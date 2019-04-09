@@ -38,7 +38,7 @@ func (c *rocksdbCache) Get(key string) ([]byte, error) {
 	k := C.CString(key)
 	defer C.free(unsafe.Pointer(k))
 
-	var valueLen int
+	var valueLen C.size_t
 	value := C.rocksdb_get(c.db, c.ro, k, C.size_t(len(key)), &valueLen, &c.e)
 	defer C.free(unsafe.Pointer(value))
 	if c.e != nil {
@@ -64,7 +64,7 @@ func (c *rocksdbCache) Del(key string) error {
 	k := C.CString(key)
 	defer C.free(unsafe.Pointer(k))
 
-	C.rocksdb_delete(c.db, c.ro, k, C.size_t(len(key)), &c.e)
+	C.rocksdb_delete(c.db, c.wo, k, C.size_t(len(key)), &c.e)
 	if c.e != nil {
 		return errors.New(C.GoString(c.e))
 	}
@@ -85,7 +85,7 @@ func (c *rocksdbCache) GetStat() Stat {
 			s.Count, _ = strconv.ParseInt(submatches[2], 10, 64)
 		case " raw key size":
 			s.KeySize, _ = strconv.ParseInt(submatches[2], 10, 64)
-		case "raw value size":
+		case " raw value size":
 			s.ValueSize, _ = strconv.ParseInt(submatches[2], 10, 64)
 		}
 	}

@@ -16,6 +16,8 @@ func New(typ string) Cache {
 	switch typ {
 	case "inmemory":
 		c = newInMemoryCache()
+	case "rocksdb":
+		c = newRocksdbCache()
 	default:
 		panic("unkown cache type: " + typ)
 	}
