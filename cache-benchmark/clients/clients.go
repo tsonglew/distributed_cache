@@ -17,7 +17,8 @@ type Client interface {
 func New(typ, server string) Client {
 	switch typ {
 	case "redis":
-		return newRedisClient(server)
+		panic("not implemented")
+		//return newRedisClient(server)
 	case "http":
 		return newHTTPClient(server)
 	case "tcp":

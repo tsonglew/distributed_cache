@@ -40,6 +40,9 @@ func main() {
 	res := &result{0, 0, 0, make([]statistic, 0)}
 	start := time.Now()
 	for i := 0; i < threads; i++ {
+		go operate(i, total/threads, ch)
+	}
+	for i := 0; i < threads; i++ {
 		res.addResult(<-ch)
 	}
 	d := time.Now().Sub(start)

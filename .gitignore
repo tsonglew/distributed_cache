@@ -5,6 +5,8 @@
 *.so
 *.dylib
 distribute_cache
+cache-benchmark
+client
 
 # Test binary, build with `go test -c`
 *.test
