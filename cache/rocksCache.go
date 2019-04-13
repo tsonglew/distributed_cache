@@ -11,14 +11,22 @@ import (
 	"regexp"
 	"runtime"
 	"strconv"
+	"time"
 	"unsafe"
 )
+
+type pair struct {
+	key   string
+	value []byte
+}
 
 type rocksdbCache struct {
 	db *C.rocksdb_t              `rocksDB type`
 	ro *C.rocksdb_readoptions_t  `rocksDB read options`
 	wo *C.rocksdb_writeoptions_t `rocksDB write options`
 	e  *C.char                   `error string from rocksDB C API`
+	ch chan *pair                `batch write channel`
+	bs int                       `batch write size`
 }
 
 func newRocksdbCache() *rocksdbCache {
@@ -31,7 +39,71 @@ func newRocksdbCache() *rocksdbCache {
 		panic(C.GoString(e))
 	}
 	C.rocksdb_options_destroy(options)
-	return &rocksdbCache{db, C.rocksdb_readoptions_create(), C.rocksdb_writeoptions_create(), e}
+	r := &rocksdbCache{
+		db,
+		C.rocksdb_readoptions_create(),
+		C.rocksdb_writeoptions_create(),
+		e,
+		make(chan *pair, 5000),
+		100,
+	}
+	go r.writeRoutine()
+	return r
+}
+
+func (c *rocksdbCache) flushBatch(b *C.rocksdb_writebatch_t) {
+	var e *C.char
+	C.rocksdb_write(c.db, c.wo, b, &e)
+	if e != nil {
+		panic(C.GoString(e))
+	}
+	C.rocksdb_writebatch_clear(b)
+}
+
+func (c *rocksdbCache) writeRoutine() {
+	batchCount := 0
+	t := time.NewTimer(time.Second)
+	b := C.rocksdb_writebatch_create()
+	for {
+		select {
+		case p := <-c.ch:
+			batchCount++
+			k := C.CString(p.key)
+			v := C.CBytes(p.value)
+			C.rocksdb_writebatch_put(b, k, C.size_t(len(p.key)), (*C.char)(v), C.size_t(len(p.value)))
+			C.free(unsafe.Pointer(k))
+			C.free(v)
+			if batchCount == c.bs {
+				c.flushBatch(b)
+				batchCount = 0
+			}
+			if !t.Stop() {
+				<-t.C
+			}
+			t.Reset(time.Second)
+		case <-t.C:
+			c.flushBatch(b)
+			batchCount = 0
+			t.Reset(time.Second)
+		}
+	}
+
+}
+
+func (c *rocksdbCache) Set(key string, value []byte) error {
+	//// single set
+	// k := C.CString(key)
+	// v := C.CBytes(value)
+	// defer C.free(unsafe.Pointer(k))
+	// defer C.free(unsafe.Pointer(v))
+
+	// C.rocksdb_put(c.db, c.wo, k, C.size_t(len(key)), (*C.char)(v), C.size_t(len(value)), &c.e)
+	// if c.e != nil {
+	// 	return errors.New(C.GoString(c.e))
+	// }
+	// return nil
+	c.ch <- &pair{key, value}
+	return nil
 }
 
 func (c *rocksdbCache) Get(key string) ([]byte, error) {
@@ -45,19 +117,6 @@ func (c *rocksdbCache) Get(key string) ([]byte, error) {
 		return nil, errors.New(C.GoString(c.e))
 	}
 	return C.GoBytes(unsafe.Pointer(value), C.int(valueLen)), nil
-}
-
-func (c *rocksdbCache) Set(key string, value []byte) error {
-	k := C.CString(key)
-	v := C.CBytes(value)
-	defer C.free(unsafe.Pointer(k))
-	defer C.free(unsafe.Pointer(v))
-
-	C.rocksdb_put(c.db, c.wo, k, C.size_t(len(key)), (*C.char)(v), C.size_t(len(value)), &c.e)
-	if c.e != nil {
-		return errors.New(C.GoString(c.e))
-	}
-	return nil
 }
 
 func (c *rocksdbCache) Del(key string) error {
