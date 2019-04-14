@@ -40,12 +40,12 @@ func newRocksdbCache() *rocksdbCache {
 	}
 	C.rocksdb_options_destroy(options)
 	r := &rocksdbCache{
-		db,
-		C.rocksdb_readoptions_create(),
-		C.rocksdb_writeoptions_create(),
-		e,
-		make(chan *pair, 5000),
-		100,
+		db: db,
+		ro: C.rocksdb_readoptions_create(),
+		wo: C.rocksdb_writeoptions_create(),
+		e:  e,
+		ch: make(chan *pair, 5000),
+		bs: 100,
 	}
 	go r.writeRoutine()
 	return r

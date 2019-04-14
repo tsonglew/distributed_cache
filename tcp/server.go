@@ -16,6 +16,11 @@ type Server struct {
 	cache.Cache
 }
 
+type result struct {
+	v []byte
+	e error
+}
+
 func New(c cache.Cache) *Server {
 	return &Server{c}
 }
@@ -83,7 +88,7 @@ func (s *Server) readKeyAndValue(r *bufio.Reader) (string, []byte, error) {
 	return string(keyBuf), valueBuf, nil
 }
 
-func (s *Server) sendResponse(value []byte, err error, conn net.Conn) error {
+func sendResponse(value []byte, err error, conn net.Conn) error {
 	var respStr string
 	if err != nil {
 		respStr = fmt.Sprintf("-%d %s", len(err.Error()), err.Error())
@@ -95,36 +100,49 @@ func (s *Server) sendResponse(value []byte, err error, conn net.Conn) error {
 	return writeErr
 }
 
-func (s *Server) get(conn net.Conn, r *bufio.Reader) error {
+func (s *Server) get(conn net.Conn, r *bufio.Reader, chChan chan chan *result) {
+	ch := make(chan *result)
+	chChan <- ch
 	key, err := s.readKey(r)
 	if err != nil {
-		return err
+		ch <- &result{nil, err}
+		return
 	}
-	v, err := s.Get(key)
-	return s.sendResponse(v, err, conn)
+	go func() {
+		v, err := s.Get(key)
+		ch <- &result{v, err}
+	}()
 }
 
-func (s *Server) set(conn net.Conn, r *bufio.Reader) error {
+func (s *Server) set(conn net.Conn, r *bufio.Reader, chChan chan chan *result) {
+	ch := make(chan *result)
+	chChan <- ch
 	k, v, err := s.readKeyAndValue(r)
 	if err != nil {
-		return err
+		ch <- &result{nil, err}
+		return
 	}
-	err = s.Set(k, v)
-	return s.sendResponse(nil, err, conn)
+	go func() {
+		ch <- &result{nil, s.Set(k, v)}
+	}()
 }
 
-func (s *Server) del(conn net.Conn, r *bufio.Reader) error {
+func (s *Server) del(conn net.Conn, r *bufio.Reader, chChan chan chan *result) {
+	ch := make(chan *result)
 	key, err := s.readKey(r)
 	if err != nil {
-		return err
+		ch <- &result{nil, err}
+		return
 	}
-	err = s.Del(key)
-	return s.sendResponse(nil, err, conn)
+	go func() {
+		ch <- &result{nil, s.Del(key)}
+	}()
 }
 
 func (s *Server) process(conn net.Conn) {
-	defer conn.Close()
+	chChan := make(chan chan *result, 5000)
 	r := bufio.NewReader(conn)
+	go reply(conn, chChan)
 	for {
 		op, err := r.ReadByte()
 		if err != nil {
@@ -132,17 +150,33 @@ func (s *Server) process(conn net.Conn) {
 		}
 		switch op {
 		case 'S':
-			err = s.set(conn, r)
+			s.set(conn, r, chChan)
 		case 'G':
-			err = s.get(conn, r)
+			s.get(conn, r, chChan)
 		case 'D':
-			err = s.del(conn, r)
+			s.del(conn, r, chChan)
 		default:
 			log.Printf("connection closed for wrong op: %b\n", op)
 			return
 		}
 		if err != nil {
 			log.Printf("connection closed: %s", err)
+			return
+		}
+	}
+}
+
+func reply(conn net.Conn, chChan chan chan *result) {
+	defer conn.Close()
+	for {
+		ch, open := <-chChan
+		if !open {
+			return
+		}
+		r := <-ch
+		err := sendResponse(r.v, r.e, conn)
+		if err != nil {
+			log.Println("send response error:", err)
 			return
 		}
 	}
