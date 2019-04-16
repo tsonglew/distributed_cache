@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kasheemlew/distribute_cache/cache"
-	"github.com/kasheemlew/distribute_cache/cluster"
+	"github.com/kasheemlew/distributed_cache/cache"
+	"github.com/kasheemlew/distributed_cache/cluster"
 )
 
 type Server struct {

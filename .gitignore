@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+distributed_cache
 distribute_cache
 cache-benchmark
 client

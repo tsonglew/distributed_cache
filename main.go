@@ -4,10 +4,10 @@ import (
 	"flag"
 	"log"
 
-	"github.com/kasheemlew/distribute_cache/cache"
-	"github.com/kasheemlew/distribute_cache/cluster"
-	"github.com/kasheemlew/distribute_cache/http"
-	"github.com/kasheemlew/distribute_cache/tcp"
+	"github.com/kasheemlew/distributed_cache/cache"
+	"github.com/kasheemlew/distributed_cache/cluster"
+	"github.com/kasheemlew/distributed_cache/http"
+	"github.com/kasheemlew/distributed_cache/tcp"
 )
 
 func main() {

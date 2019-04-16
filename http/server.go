@@ -3,8 +3,8 @@ package http
 import (
 	"net/http"
 
-	"github.com/kasheemlew/distribute_cache/cache"
-	"github.com/kasheemlew/distribute_cache/cluster"
+	"github.com/kasheemlew/distributed_cache/cache"
+	"github.com/kasheemlew/distributed_cache/cluster"
 )
 
 // Server is server
