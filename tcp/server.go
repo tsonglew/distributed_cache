@@ -2,6 +2,7 @@ package tcp
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -10,10 +11,12 @@ import (
 	"strings"
 
 	"github.com/kasheemlew/distribute_cache/cache"
+	"github.com/kasheemlew/distribute_cache/cluster"
 )
 
 type Server struct {
 	cache.Cache
+	cluster.Node
 }
 
 type result struct {
@@ -21,12 +24,12 @@ type result struct {
 	e error
 }
 
-func New(c cache.Cache) *Server {
-	return &Server{c}
+func New(c cache.Cache, n cluster.Node) *Server {
+	return &Server{c, n}
 }
 
 func (s *Server) Listen(port string) {
-	l, err := net.Listen("tcp", port)
+	l, err := net.Listen("tcp", s.Addr()+port)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -63,7 +66,12 @@ func (s *Server) readKey(r *bufio.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(keyBuf), nil
+	key := string(keyBuf)
+	addr, ok := s.ShouldProcess(key)
+	if !ok {
+		return "", errors.New("redirect " + addr)
+	}
+	return key, nil
 }
 
 func (s *Server) readKeyAndValue(r *bufio.Reader) (string, []byte, error) {
@@ -80,12 +88,17 @@ func (s *Server) readKeyAndValue(r *bufio.Reader) (string, []byte, error) {
 	if err != nil {
 		return "", []byte{}, err
 	}
+	key := string(keyBuf)
+	addr, ok := s.ShouldProcess(key)
+	if !ok {
+		return "", nil, errors.New("redirect " + addr)
+	}
 	valueBuf := make([]byte, valueLen)
 	_, err = io.ReadFull(r, valueBuf)
 	if err != nil {
 		return "", []byte{}, err
 	}
-	return string(keyBuf), valueBuf, nil
+	return key, valueBuf, nil
 }
 
 func sendResponse(value []byte, err error, conn net.Conn) error {

@@ -16,6 +16,10 @@ type statusHandler struct {
 	*Server
 }
 
+type clusterHandler struct {
+	*Server
+}
+
 func (c *cacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	escapedURL := r.URL.EscapedPath()
 	key := strings.Split(escapedURL, "/")[2]
@@ -73,4 +77,19 @@ func (s *statusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
+}
+
+func (c *clusterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	m := c.Members()
+	b, e := json.Marshal(m)
+	if e != nil {
+		log.Println(e)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Write(b)
 }
