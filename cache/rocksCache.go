@@ -15,11 +15,6 @@ import (
 	"unsafe"
 )
 
-type pair struct {
-	key   string
-	value []byte
-}
-
 type rocksdbCache struct {
 	db *C.rocksdb_t              `rocksDB type`
 	ro *C.rocksdb_readoptions_t  `rocksDB read options`
@@ -149,4 +144,8 @@ func (c *rocksdbCache) GetStat() Stat {
 		}
 	}
 	return s
+}
+
+func (c *rocksdbCache) NewScanner() Scanner {
+	return &rocksdbScanner{C.rocksdb_create_iterator(c.db, c.ro), false}
 }

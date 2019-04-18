@@ -50,3 +50,22 @@ func newInMemoryCache() *InMemoryCache {
 		Stat:  Stat{},
 	}
 }
+
+func (c *InMemoryCache) NewScanner() Scanner {
+	pairCh := make(chan *pair)
+	closeCh := make(chan struct{})
+	go func() {
+		defer close(closeCh)
+		c.mutex.RLock()
+		for k, v := range c.c {
+			c.mutex.RUnlock()
+			select {
+			case <-closeCh:
+				return
+			case pairCh <- &pair{k, v}:
+			}
+			c.mutex.RLock()
+		}
+	}()
+	return &inMemoryScanner{pair{}, pairCh, closeCh}
+}

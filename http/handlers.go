@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"log"
@@ -17,6 +18,10 @@ type statusHandler struct {
 }
 
 type clusterHandler struct {
+	*Server
+}
+
+type rebalanceHandler struct {
 	*Server
 }
 
@@ -92,4 +97,27 @@ func (c *clusterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(b)
+}
+
+func (h *rebalanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	go h.rebalance()
+}
+
+func (h *rebalanceHandler) rebalance() {
+	s := h.NewScanner()
+	defer s.Close()
+	c := &http.Client{}
+	for s.Scan() {
+		k := s.Key()
+		n, ok := h.ShouldProcess(k)
+		if !ok {
+			r, _ := http.NewRequest(http.MethodPut, "http://"+n+":1234/cache"+k, bytes.NewReader(s.Value()))
+			c.Do(r)
+			h.Del(k)
+		}
+	}
 }
