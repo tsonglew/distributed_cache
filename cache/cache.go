@@ -12,13 +12,13 @@ type Cache interface {
 	NewScanner() Scanner
 }
 
-func New(typ string) Cache {
+func New(typ string, ttl int) Cache {
 	var c Cache
 	switch typ {
 	case "inmemory":
-		c = newInMemoryCache()
+		c = newInMemoryCache(ttl)
 	case "rocksdb":
-		c = newRocksdbCache()
+		c = newRocksdbCache(ttl)
 	default:
 		panic("unkown cache type: " + typ)
 	}

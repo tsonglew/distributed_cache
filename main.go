@@ -12,13 +12,14 @@ import (
 
 func main() {
 	typ := flag.String("type", "inmemory", "memory type")
+	ttl := flag.Int("ttl", 30, "cache time to live")
 	node := flag.String("node", "127.0.0.1", "node address")
 	clus := flag.String("cluster", "", "cluster address")
 	flag.Parse()
 	log.Printf("using memory type: %s\n", *typ)
 	log.Println("node address: ", *node)
 	log.Println("cluster address: ", *clus)
-	c := cache.New(*typ)
+	c := cache.New(*typ, *ttl)
 	n, e := cluster.New(*node, *clus)
 	if e != nil {
 		panic(e)
